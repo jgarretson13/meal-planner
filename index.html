@@ -194,6 +194,11 @@ h1 {
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #64748b;
+}
 @media (max-width: 768px) {
   .fields {
     grid-template-columns: 1fr;
@@ -244,101 +249,195 @@ h1 {
   </div>
   
   <div id="daysContainer"></div>
+  <div id="loading" class="loading">Loading...</div>
 </div>
 
-<script>
-var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-function init() {
-  var container = document.getElementById('daysContainer');
-  var html = '';
-  
-  for (var i = 0; i < days.length; i++) {
-    html += '<div class="day-card">';
-    html += '<div class="day-header">';
-    html += '<div class="day-name">' + days[i] + '</div>';
-    html += '<div class="day-date" id="date-' + i + '"></div>';
-    html += '</div>';
-    html += '<div class="fields">';
-    html += '<div class="field"><label>Events/Outings</label><input type="text" id="events-' + i + '" placeholder="Soccer practice, dinner out, etc."></div>';
-    html += '<div class="field"><label>Main Dish</label><input type="text" id="main-' + i + '" placeholder="Grilled chicken, spaghetti, etc."></div>';
-    html += '<div class="field"><label>Sides</label><input type="text" id="sides-' + i + '" placeholder="Rice, salad, roasted vegetables"></div>';
-    html += '<div class="field"><label>Special Grocery Needs</label><input type="text" id="groceries-' + i + '" placeholder="Fresh basil, chicken breast, etc."></div>';
-    html += '</div>';
-    html += '</div>';
-  }
-  
-  container.innerHTML = html;
-}
+  const firebaseConfig = {
+    apiKey: "AIzaSyCuVgaEPqmrMFFPlv8Dn2WpEvZ5cDiyJV4",
+    authDomain: "meal-planner-73175.firebaseapp.com",
+    projectId: "meal-planner-73175",
+    storageBucket: "meal-planner-73175.firebasestorage.app",
+    messagingSenderId: "633381008077",
+    appId: "1:633381008077:web:2088680bf3f5555d996f84"
+  };
 
-function updateDates() {
-  var startVal = document.getElementById('startDate').value;
-  if (!startVal) return;
-  
-  var startDate = new Date(startVal);
-  for (var i = 0; i < 7; i++) {
-    var d = new Date(startDate);
-    d.setDate(d.getDate() + i);
-    var dateStr = months[d.getMonth()] + ' ' + d.getDate();
-    var elem = document.getElementById('date-' + i);
-    if (elem) {
-      elem.textContent = dateStr;
-    }
-  }
-}
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-function updateGroceryList() {
-  var content = document.getElementById('groceryContent');
-  var html = '';
-  var hasItems = false;
-  
-  var staplesVal = document.getElementById('staplesInput').value.trim();
-  if (staplesVal) {
-    hasItems = true;
-    html += '<div class="grocery-item staple">';
-    html += '<div class="grocery-day staple">Staples</div>';
-    html += '<div class="grocery-items">' + staplesVal + '</div>';
-    html += '</div>';
-  }
-  
-  for (var i = 0; i < 7; i++) {
-    var input = document.getElementById('groceries-' + i);
-    if (input && input.value.trim()) {
-      hasItems = true;
-      html += '<div class="grocery-item daily">';
-      html += '<div class="grocery-day daily">' + days[i] + '</div>';
-      html += '<div class="grocery-items">' + input.value + '</div>';
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const mealPlanRef = doc(db, 'mealPlans', 'current');
+
+  function init() {
+    var container = document.getElementById('daysContainer');
+    var html = '';
+    
+    for (var i = 0; i < days.length; i++) {
+      html += '<div class="day-card">';
+      html += '<div class="day-header">';
+      html += '<div class="day-name">' + days[i] + '</div>';
+      html += '<div class="day-date" id="date-' + i + '"></div>';
+      html += '</div>';
+      html += '<div class="fields">';
+      html += '<div class="field"><label>Events/Outings</label><input type="text" id="events-' + i + '" placeholder="Soccer practice, dinner out, etc."></div>';
+      html += '<div class="field"><label>Main Dish</label><input type="text" id="main-' + i + '" placeholder="Grilled chicken, spaghetti, etc."></div>';
+      html += '<div class="field"><label>Sides</label><input type="text" id="sides-' + i + '" placeholder="Rice, salad, roasted vegetables"></div>';
+      html += '<div class="field"><label>Special Grocery Needs</label><input type="text" id="groceries-' + i + '" placeholder="Fresh basil, chicken breast, etc."></div>';
+      html += '</div>';
       html += '</div>';
     }
+    
+    container.innerHTML = html;
+    
+    for (var i = 0; i < days.length; i++) {
+      setupFieldListeners(i);
+    }
+    
+    document.getElementById('startDate').addEventListener('change', saveStartDate);
+    document.getElementById('staplesInput').addEventListener('input', saveStaples);
+    
+    document.getElementById('loading').style.display = 'none';
   }
-  
-  if (!hasItems) {
-    html = '<p style="color: #6b7280; font-style: italic;">No grocery items added yet. Fill in the staples or Special Grocery Needs fields below.</p>';
+
+  function setupFieldListeners(dayIndex) {
+    ['events', 'main', 'sides', 'groceries'].forEach(function(field) {
+      var input = document.getElementById(field + '-' + dayIndex);
+      if (input) {
+        input.addEventListener('input', function() {
+          saveMealData(dayIndex, field, this.value);
+        });
+      }
+    });
   }
-  
-  content.innerHTML = html;
-}
 
-var showingGrocery = false;
-document.getElementById('toggleGrocery').onclick = function() {
-  showingGrocery = !showingGrocery;
-  var list = document.getElementById('groceryList');
-  var btn = document.getElementById('toggleGrocery');
-  
-  if (showingGrocery) {
-    list.classList.add('show');
-    btn.textContent = 'Hide Grocery List';
-    updateGroceryList();
-  } else {
-    list.classList.remove('show');
-    btn.textContent = 'Show Grocery List';
+  async function saveMealData(dayIndex, field, value) {
+    try {
+      var updateData = {};
+      updateData['days.' + days[dayIndex] + '.' + field] = value;
+      await setDoc(mealPlanRef, updateData, { merge: true });
+    } catch (error) {
+      console.error('Error saving:', error);
+    }
   }
-};
 
-document.getElementById('startDate').onchange = updateDates;
+  async function saveStartDate() {
+    var dateValue = document.getElementById('startDate').value;
+    try {
+      await setDoc(mealPlanRef, { startDate: dateValue }, { merge: true });
+      updateDates();
+    } catch (error) {
+      console.error('Error saving date:', error);
+    }
+  }
 
-init();
+  async function saveStaples() {
+    var staplesValue = document.getElementById('staplesInput').value;
+    try {
+      await setDoc(mealPlanRef, { staples: staplesValue }, { merge: true });
+    } catch (error) {
+      console.error('Error saving staples:', error);
+    }
+  }
+
+  function updateDates() {
+    var startVal = document.getElementById('startDate').value;
+    if (!startVal) return;
+    
+    var startDate = new Date(startVal);
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(startDate);
+      d.setDate(d.getDate() + i);
+      var dateStr = months[d.getMonth()] + ' ' + d.getDate();
+      var elem = document.getElementById('date-' + i);
+      if (elem) {
+        elem.textContent = dateStr;
+      }
+    }
+  }
+
+  function updateGroceryList() {
+    var content = document.getElementById('groceryContent');
+    var html = '';
+    var hasItems = false;
+    
+    var staplesVal = document.getElementById('staplesInput').value.trim();
+    if (staplesVal) {
+      hasItems = true;
+      html += '<div class="grocery-item staple">';
+      html += '<div class="grocery-day staple">Staples</div>';
+      html += '<div class="grocery-items">' + staplesVal + '</div>';
+      html += '</div>';
+    }
+    
+    for (var i = 0; i < 7; i++) {
+      var input = document.getElementById('groceries-' + i);
+      if (input && input.value.trim()) {
+        hasItems = true;
+        html += '<div class="grocery-item daily">';
+        html += '<div class="grocery-day daily">' + days[i] + '</div>';
+        html += '<div class="grocery-items">' + input.value + '</div>';
+        html += '</div>';
+      }
+    }
+    
+    if (!hasItems) {
+      html = '<p style="color: #6b7280; font-style: italic;">No grocery items added yet. Fill in the staples or Special Grocery Needs fields below.</p>';
+    }
+    
+    content.innerHTML = html;
+  }
+
+  var showingGrocery = false;
+  document.getElementById('toggleGrocery').onclick = function() {
+    showingGrocery = !showingGrocery;
+    var list = document.getElementById('groceryList');
+    var btn = document.getElementById('toggleGrocery');
+    
+    if (showingGrocery) {
+      list.classList.add('show');
+      btn.textContent = 'Hide Grocery List';
+      updateGroceryList();
+    } else {
+      list.classList.remove('show');
+      btn.textContent = 'Show Grocery List';
+    }
+  };
+
+  onSnapshot(mealPlanRef, function(docSnap) {
+    if (docSnap.exists()) {
+      var data = docSnap.data();
+      
+      if (data.startDate) {
+        document.getElementById('startDate').value = data.startDate;
+        updateDates();
+      }
+      
+      if (data.staples !== undefined) {
+        document.getElementById('staplesInput').value = data.staples;
+      }
+      
+      if (data.days) {
+        for (var i = 0; i < days.length; i++) {
+          var dayData = data.days[days[i]];
+          if (dayData) {
+            ['events', 'main', 'sides', 'groceries'].forEach(function(field) {
+              var input = document.getElementById(field + '-' + i);
+              if (input && dayData[field] !== undefined) {
+                input.value = dayData[field];
+              }
+            });
+          }
+        }
+      }
+    }
+  });
+
+  init();
 </script>
 </body>
 </html>
