@@ -348,7 +348,7 @@ h1 {
     var startVal = document.getElementById('startDate').value;
     if (!startVal) return;
     
-    var startDate = new Date(startVal);
+    var startDate = new Date(startVal + 'T00:00:00');
     for (var i = 0; i < 7; i++) {
       var d = new Date(startDate);
       d.setDate(d.getDate() + i);
