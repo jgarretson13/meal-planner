@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly Family Meal Planner</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #e0f2fe 0%, #ddd6fe 100%);
+  min-height: 100vh;
+  padding: 20px;
+  margin: 0;
+}
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.header {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+h1 {
+  color: #1e293b;
+  margin: 0 0 20px 0;
+  font-size: 28px;
+}
+.controls {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.date-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.date-group label {
+  font-weight: bold;
+  color: #475569;
+}
+.date-group input {
+  padding: 10px 15px;
+  border: 2px solid #a5b4fc;
+  border-radius: 8px;
+  font-size: 16px;
+}
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-primary {
+  background: #4f46e5;
+  color: white;
+}
+.btn-primary:hover {
+  background: #4338ca;
+}
+.btn-success {
+  background: #059669;
+  color: white;
+}
+.btn-success:hover {
+  background: #047857;
+}
+.grocery-list {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+  display: none;
+}
+.grocery-list.show {
+  display: block;
+}
+.grocery-list h2 {
+  color: #1e293b;
+  margin: 0 0 20px 0;
+  font-size: 24px;
+}
+.grocery-item {
+  padding: 12px 0 12px 16px;
+  margin-bottom: 12px;
+}
+.grocery-item.staple {
+  border-left: 4px solid #059669;
+  background: #f0fdf4;
+}
+.grocery-item.daily {
+  border-left: 4px solid #4f46e5;
+}
+.grocery-day {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+.grocery-day.staple {
+  color: #059669;
+}
+.grocery-day.daily {
+  color: #4f46e5;
+}
+.grocery-items {
+  color: #374151;
+}
+.staples-section {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+.staples-section h2 {
+  color: #1e293b;
+  margin: 0 0 10px 0;
+  font-size: 24px;
+}
+.staples-section p {
+  color: #64748b;
+  margin: 0 0 15px 0;
+  font-size: 14px;
+}
+.staples-section textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: Arial, sans-serif;
+  resize: vertical;
+}
+.staples-section textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+.day-card {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom: 15px;
+}
+.day-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e0e7ff;
+}
+.day-name {
+  font-size: 22px;
+  font-weight: bold;
+  color: #4f46e5;
+}
+.day-date {
+  font-size: 16px;
+  color: #64748b;
+  font-weight: 500;
+}
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+}
+.field label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #374151;
+  margin-bottom: 6px;
+}
+.field input {
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 15px;
+}
+.field input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+@media (max-width: 768px) {
+  .fields {
+    grid-template-columns: 1fr;
+  }
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .date-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+@media print {
+  body {
+    background: white;
+    padding: 10px;
+  }
+  .controls, .btn {
+    display: none;
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Weekly Family Meal Planner</h1>
+    <div class="controls">
+      <div class="date-group">
+        <label for="startDate">Start Date (Sunday):</label>
+        <input type="date" id="startDate">
+      </div>
+      <button class="btn btn-primary" id="toggleGrocery">Show Grocery List</button>
+      <button class="btn btn-success" onclick="window.print()">Print Meal Plan</button>
+    </div>
+  </div>
+  
+  <div class="grocery-list" id="groceryList">
+    <h2>🛒 Weekly Grocery List</h2>
+    <div id="groceryContent"></div>
+  </div>
+  
+  <div class="staples-section">
+    <h2>🥫 Weekly Staples</h2>
+    <p>Add items you need every week (milk, bread, eggs, etc.)</p>
+    <textarea id="staplesInput" rows="3" placeholder="Milk, eggs, bread, coffee, etc."></textarea>
+  </div>
+  
+  <div id="daysContainer"></div>
+</div>
+
+<script>
+var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function init() {
+  var container = document.getElementById('daysContainer');
+  var html = '';
+  
+  for (var i = 0; i < days.length; i++) {
+    html += '<div class="day-card">';
+    html += '<div class="day-header">';
+    html += '<div class="day-name">' + days[i] + '</div>';
+    html += '<div class="day-date" id="date-' + i + '"></div>';
+    html += '</div>';
+    html += '<div class="fields">';
+    html += '<div class="field"><label>Events/Outings</label><input type="text" id="events-' + i + '" placeholder="Soccer practice, dinner out, etc."></div>';
+    html += '<div class="field"><label>Main Dish</label><input type="text" id="main-' + i + '" placeholder="Grilled chicken, spaghetti, etc."></div>';
+    html += '<div class="field"><label>Sides</label><input type="text" id="sides-' + i + '" placeholder="Rice, salad, roasted vegetables"></div>';
+    html += '<div class="field"><label>Special Grocery Needs</label><input type="text" id="groceries-' + i + '" placeholder="Fresh basil, chicken breast, etc."></div>';
+    html += '</div>';
+    html += '</div>';
+  }
+  
+  container.innerHTML = html;
+}
+
+function updateDates() {
+  var startVal = document.getElementById('startDate').value;
+  if (!startVal) return;
+  
+  var startDate = new Date(startVal);
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(startDate);
+    d.setDate(d.getDate() + i);
+    var dateStr = months[d.getMonth()] + ' ' + d.getDate();
+    var elem = document.getElementById('date-' + i);
+    if (elem) {
+      elem.textContent = dateStr;
+    }
+  }
+}
+
+function updateGroceryList() {
+  var content = document.getElementById('groceryContent');
+  var html = '';
+  var hasItems = false;
+  
+  var staplesVal = document.getElementById('staplesInput').value.trim();
+  if (staplesVal) {
+    hasItems = true;
+    html += '<div class="grocery-item staple">';
+    html += '<div class="grocery-day staple">Staples</div>';
+    html += '<div class="grocery-items">' + staplesVal + '</div>';
+    html += '</div>';
+  }
+  
+  for (var i = 0; i < 7; i++) {
+    var input = document.getElementById('groceries-' + i);
+    if (input && input.value.trim()) {
+      hasItems = true;
+      html += '<div class="grocery-item daily">';
+      html += '<div class="grocery-day daily">' + days[i] + '</div>';
+      html += '<div class="grocery-items">' + input.value + '</div>';
+      html += '</div>';
+    }
+  }
+  
+  if (!hasItems) {
+    html = '<p style="color: #6b7280; font-style: italic;">No grocery items added yet. Fill in the staples or Special Grocery Needs fields below.</p>';
+  }
+  
+  content.innerHTML = html;
+}
+
+var showingGrocery = false;
+document.getElementById('toggleGrocery').onclick = function() {
+  showingGrocery = !showingGrocery;
+  var list = document.getElementById('groceryList');
+  var btn = document.getElementById('toggleGrocery');
+  
+  if (showingGrocery) {
+    list.classList.add('show');
+    btn.textContent = 'Hide Grocery List';
+    updateGroceryList();
+  } else {
+    list.classList.remove('show');
+    btn.textContent = 'Show Grocery List';
+  }
+};
+
+document.getElementById('startDate').onchange = updateDates;
+
+init();
+</script>
+</body>
+</html>
